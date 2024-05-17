@@ -1,24 +1,61 @@
 # Version 1.0
 
 <#
-===========================================================================================
-|                                                                                         |
-|                                        Variables                                        |
-|                                                                                         |
-===========================================================================================
+.SYNOPSIS
+    Converts ISO files to RVZ format using DolphinTool.
+.DESCRIPTION
+    Long description
+.EXAMPLE
+    PS C:\> Convert_ISO_to_RVZ.ps1 -InputDirectoryPath "C:\Games\ISOs" -Recurse -CompressionFormat "lzma2" -CompressionLevel 9 -DictionarySize "32mb"
+    Explanation of what the example does
+.PARAMETER dolphinToolFullPath
+    Full path to DolphinTool executable file
+.PARAMETER inputDirectoryPath
+    Path to the directory containing the ISO files
+.PARAMETER recursiveSearch
+    Search for ISO files in subdirectories
+.PARAMETER overwriteConfirm
+    Confirm overwrite of existing RVZ files
+.PARAMETER sendConvertedFilesToRecycleBin
+    Send converted files to Recycle Bin
+.PARAMETER compressionFormat
+    Compression format to use (none, zstd, bzip, lzma, lzma2)
+.PARAMETER compressionLevel
+    Compression level to use (zstd: 1~22, bzip/lzma/lzma2: 1~9)
+.PARAMETER dictionarySize
+    Dictionary size to use
 #>
 
-$dolphinToolFullPath = "$PSScriptRoot\DolphinTool.exe"
+[CmdletBinding()]
+param (
+    [String]
+    [Alias("DolphinToolPath")]
+    $dolphinToolFullPath = "$PSScriptRoot\DolphinTool.exe",
+    [String]
+    [Alias("InputDirectoryPath")]
+    $inputDirectoryPath = "$PSScriptRoot",
+    [bool]
+    [Alias("Recurse")]
+    $recursiveSearch = $false,
+    [bool]
+    [Alias("Force")]
+    $overwriteConfirm = $true,
+    [bool]
+    [Alias("MoveFilesToRecycleBin")]
+    $sendConvertedFilesToRecycleBin = $false,
+    [Sting]
+    [Alias("CompressionFormat")]
+    $compressionFormat = "lzma2", # none, zstd, bzip, lzma, lzma2
+    [Int]
+    [Alias("CompressionLevel")]
+    $compressionLevel = 9, # zstd: 1~22, bzip/lzma/lzma2: 1~9
+    [String]
+    [Alias("DictionarySize")]
+    $dictionarySize = 32mb
+)
 
-$inputDirectoryPath = "$PSScriptRoot"
-$recursiveSearch = $false
 
-$overwriteConfirm = $true
-$sendConvertedFilesToRecycleBin = $false
 
-$compressionFormat = "lzma2" # none, zstd, bzip, lzma, lzma2
-$compressionLevel  = 9       # zstd: 1~22, bzip/lzma/lzma2: 1~9
-$dictionarySize    = 32mb
 
 # Default Dolphin values:
 # -----------------------
@@ -70,11 +107,11 @@ function Confirm-Continue {
             [console]::beep(1500, 500)
         }
     } while ($char -ne "Y" -and $char -ne "N")
-    if ($char -eq "N") {Exit(1)}
+    if ($char -eq "N") { Exit(1) }
 }
 
 function Validate-Variables {
-    
+
     if (-not (Test-Path -LiteralPath $inputDirectoryPath -PathType Container)) {
         Write-Host " Input directory path does not exists!" -BackgroundColor Black -ForegroundColor Red
         Write-Host ""
@@ -98,17 +135,24 @@ function Convert-Files {
     Add-Type -AssemblyName Microsoft.VisualBasic
 
     $isoFiles = $null
-    if ($recursiveSearch) {
-        $isoFiles = Get-ChildItem -LiteralPath $inputDirectoryPath -Filter "*.*" -Recurse -File -ErrorAction Stop |
-                    Where-Object { $_.Extension -ieq '.iso' } |
-                    ForEach-Object { New-Object System.IO.FileInfo -ArgumentList $_.FullName }
-    } else {
-        $isoFiles = Get-ChildItem -LiteralPath $inputDirectoryPath -Filter "*.*" -File -ErrorAction Stop |
-                    Where-Object { $_.Extension -ieq '.iso' } |
-                    ForEach-Object { New-Object System.IO.FileInfo -ArgumentList $_.FullName }
+    $Arguments = @{
+        LiteralPath = $inputDirectoryPath
+        Filter      = "*.*"
+        Recurse     = $false
+        File        = $true
+        ErrorAction = "Stop"
     }
 
-    foreach ($isoFile in $isoFiles) {    
+    if ($recursiveSearch) {
+        $Arguments["Remove"] = $true
+    }
+
+
+    $isoFiles = Get-ChildItem @Arguments |
+        Where-Object { $_.Extension -ieq '.iso' } |
+        ForEach-Object { New-Object System.IO.FileInfo -ArgumentList $_.FullName }
+
+    foreach ($isoFile in $isoFiles) {
         $dolphinToolFile = New-Object System.IO.FileInfo($dolphinToolFullPath)
         if (-not $dolphinToolFile.Exists) {
             Write-Host " DolphinTool executable file path does not exist: $($dolphinToolFile.FullName)" -BackgroundColor Black -ForegroundColor Red
@@ -144,11 +188,11 @@ function Convert-Files {
         $dolphinToolConvert.StartInfo.RedirectStandardError = $true
         $dolphinToolConvert.StartInfo.UseShellExecute = $false
         $dolphinToolConvert.StartInfo.CreateNoWindow = $false
-        $startedConvert   = $dolphinToolConvert.Start() # | Out-Null
-        $exitedConvert    = $dolphinToolConvert.WaitForExit()
-        $exitCodeConvert  = $dolphinToolConvert.ExitCode
+        $startedConvert = $dolphinToolConvert.Start() # | Out-Null
+        $exitedConvert = $dolphinToolConvert.WaitForExit()
+        $exitCodeConvert = $dolphinToolConvert.ExitCode
         $stdOutputConvert = $dolphinToolConvert.StandardOutput.ReadToEnd()
-        $stdErrorConvert  = $dolphinToolConvert.StandardError.ReadToEnd()
+        $stdErrorConvert = $dolphinToolConvert.StandardError.ReadToEnd()
 
         switch ($exitCodeConvert) {
             0 {
@@ -162,11 +206,11 @@ function Convert-Files {
                 $dolphinToolVerify.StartInfo.RedirectStandardError = $true
                 $dolphinToolVerify.StartInfo.UseShellExecute = $false
                 $dolphinToolVerify.StartInfo.CreateNoWindow = $false
-                $startedVerify   = $dolphinToolVerify.Start() # | Out-Null
-                $exitedVerify    = $dolphinToolVerify.WaitForExit()
-                $exitCodeVerify  = $dolphinToolVerify.ExitCode
+                $startedVerify = $dolphinToolVerify.Start() # | Out-Null
+                $exitedVerify = $dolphinToolVerify.WaitForExit()
+                $exitCodeVerify = $dolphinToolVerify.ExitCode
                 $stdOutputVerify = $dolphinToolVerify.StandardOutput.ReadToEnd()
-                $stdErrorVerify  = $dolphinToolVerify.StandardError.ReadToEnd()
+                $stdErrorVerify = $dolphinToolVerify.StandardError.ReadToEnd()
                 if (-not ($stdOutputVerify | Select-String "Problems Found: No")) {
                     Write-Warning " Verification procedure have found problems in output RVZ file:"
                     Write-Warning $stdOutputVerify
@@ -180,19 +224,22 @@ function Convert-Files {
                         $key = $Host.UI.RawUI.ReadKey("NoEcho, IncludeKeyDown")
                         try {
                             $null = [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($outputRvzFile.FullName, 'OnlyErrorDialogs', 'SendToRecycleBin')
-                        } catch {
+                        }
+                        catch {
                             Write-Host " Failed to delete $($outputRvzFile.FullName)" -ForegroundColor Red
                             Write-Host ""
                             Write-Host " Press any key to ignore and continue converting the next file..."
                             $key = $Host.UI.RawUI.ReadKey("NoEcho, IncludeKeyDown")
                         }
-                    } else {
+                    }
+                    else {
                         Write-Host " Press any to ignore and continue converting the next file..."
                         $key = $Host.UI.RawUI.ReadKey("NoEcho, IncludeKeyDown")
                     }
                     Write-Host ""
                     break
-                } else {
+                }
+                else {
                     # Write-Host $stdOutputVerify -ForegroundColor DarkGray
                     Write-Host " Verification successful." -ForegroundColor DarkGreen
                     if ($sendConvertedFilesToRecycleBin) {
@@ -216,13 +263,15 @@ function Convert-Files {
                     $key = $Host.UI.RawUI.ReadKey("NoEcho, IncludeKeyDown")
                     try {
                         $null = [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($outputRvzFile.FullName, 'OnlyErrorDialogs', 'SendToRecycleBin')
-                    } catch {
+                    }
+                    catch {
                         Write-Host " Failed to delete $($outputRvzFile.FullName)" -ForegroundColor Red
                         Write-Host ""
                         Write-Host " Press any key to ignore and continue converting the next file..."
                         $key = $Host.UI.RawUI.ReadKey("NoEcho, IncludeKeyDown")
                     }
-                } else {
+                }
+                else {
                     Write-Host " Press any key to ignore and continue converting the next file..."
                     $key = $Host.UI.RawUI.ReadKey("NoEcho, IncludeKeyDown")
                 }
