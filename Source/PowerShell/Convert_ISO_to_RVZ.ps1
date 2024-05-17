@@ -4,10 +4,15 @@
 .SYNOPSIS
     Converts ISO files to RVZ format using DolphinTool.
 .DESCRIPTION
-    Long description
+    This script will search for GameCube and Wii ISO files in the current working directory, and use DolphinTool to convert them to RVZ format.
+    The script will use the specified compression format, compression level, and dictionary size.
+    The script will also send the converted files to the Recycle Bin if the option is enabled.
+    The script will overwrite existing RVZ files if the option is enabled.
+    The script will display a welcome screen with the script settings before starting the conversion process.
+    The script will display a goodbye screen after the conversion process is completed.
 .EXAMPLE
     PS C:\> Convert_ISO_to_RVZ.ps1 -InputDirectoryPath "C:\Games\ISOs" -Recurse -CompressionFormat "lzma2" -CompressionLevel 9 -DictionarySize "32mb"
-    Explanation of what the example does
+    Converts all ISO files in the "C:\Games\ISOs" directory and subdirectories to RVZ format using LZMA2 compression with level 9 and 32MB dictionary size.
 .PARAMETER dolphinToolFullPath
     Full path to DolphinTool executable file
 .PARAMETER inputDirectoryPath
